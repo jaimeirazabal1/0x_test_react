@@ -20,20 +20,33 @@ import { DECIMALS, NULL_ADDRESS, ZERO } from "./files/constants";
 import { getRandomFutureDateInSeconds } from "./files/utils";
 import { NETWORK_CONFIGS, TX_DEFAULTS } from "./files/configs";
 
-export const providerEngine = new Web3ProviderEngine();
-providerEngine.addProvider(new RPCSubprovider("http://localhost:8545"));
-providerEngine.start();
-
-// Instantiate ContractWrappers with the provider
-const contractWrappers = new ContractWrappers(providerEngine, {
-  networkId: NETWORK_CONFIGS.networkId
-});
-const web3Wrapper = new Web3Wrapper(providerEngine);
-
 class App extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      tx: ""
+    };
+    this.try = this.try.bind(this);
+  }
+  componentDidMount() {
+    console.log("hola mundo");
+  }
   async try() {
+    console.log("NETWORK_CONFIGS", NETWORK_CONFIGS);
+    const providerEngine = new Web3ProviderEngine();
+    providerEngine.addProvider(new RPCSubprovider(NETWORK_CONFIGS.rpcUrl));
+    providerEngine.start();
+
+    // Instantiate ContractWrappers with the provider
+    const contractWrappers = new ContractWrappers(providerEngine, {
+      networkId: NETWORK_CONFIGS.networkId
+    });
+    console.log("contractWrappers", contractWrappers);
+    const web3Wrapper = new Web3Wrapper(providerEngine);
+    console.log("web3Wrapper", web3Wrapper);
     const [maker, taker] = await web3Wrapper.getAvailableAddressesAsync();
     // Token Addresses
+    console.log("maker", maker, "taker", taker);
     const zrxTokenAddress = contractWrappers.exchange.getZRXTokenAddress();
     const etherTokenAddress = contractWrappers.etherToken.getContractAddressIfExists();
     const DECIMALS = 18;
@@ -75,7 +88,7 @@ class App extends Component {
     // Set up the Order and fill it
     const randomExpiration = getRandomFutureDateInSeconds();
     const exchangeAddress = contractWrappers.exchange.getContractAddress();
-
+    console.log("exchangeAddress", exchangeAddress);
     // Create the order
     const order: Order = {
       exchangeAddress,
@@ -116,14 +129,30 @@ class App extends Component {
         gasLimit: TX_DEFAULTS.gas
       }
     );
-    await web3Wrapper.awaitTransactionSuccessAsync(txHash);
-    console.log("txHash", txHash);
+
+    const txSuccess = await web3Wrapper.awaitTransactionSuccessAsync(txHash);
+    this.setState({ tx: txHash });
   }
   render() {
     return (
       <div className="App">
         <header className="App-header">
+          <label>Maker</label>
+          <input
+            type="text"
+            id="maker"
+            value={this.maker}
+            placeholder="No yet"
+          />
+          <label>taker</label>
+          <input
+            type="text"
+            id="maker"
+            value={this.taker}
+            placeholder="No yet"
+          />
           <button onClick={this.try}>Click</button>
+          <input type="text" value={this.state.tx} />
         </header>
       </div>
     );
