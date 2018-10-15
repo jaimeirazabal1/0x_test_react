@@ -24,7 +24,10 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      tx: ""
+      tx: "",
+      maker: "",
+      taker: "",
+      order: {}
     };
     this.try = this.try.bind(this);
   }
@@ -45,6 +48,10 @@ class App extends Component {
     const web3Wrapper = new Web3Wrapper(providerEngine);
     console.log("web3Wrapper", web3Wrapper);
     const [maker, taker] = await web3Wrapper.getAvailableAddressesAsync();
+    this.setState({
+      maker: maker,
+      taker: taker
+    });
     // Token Addresses
     console.log("maker", maker, "taker", taker);
     const zrxTokenAddress = contractWrappers.exchange.getZRXTokenAddress();
@@ -105,7 +112,11 @@ class App extends Component {
       makerFee: ZERO,
       takerFee: ZERO
     };
+
     console.log("order", order);
+    this.setState({
+      order: order
+    });
     // Generate the order hash and sign it
     const orderHashHex = orderHashUtils.getOrderHashHex(order);
     const signature = await signatureUtils.ecSignOrderHashAsync(
@@ -141,18 +152,24 @@ class App extends Component {
           <input
             type="text"
             id="maker"
-            value={this.maker}
+            className="input"
+            value={this.state.maker}
             placeholder="No yet"
           />
           <label>taker</label>
           <input
             type="text"
             id="maker"
-            value={this.taker}
+            className="input"
+            value={this.state.taker}
             placeholder="No yet"
           />
           <button onClick={this.try}>Click</button>
-          <input type="text" value={this.state.tx} />
+          <input type="text" className="input" value={this.state.tx} />
+          <label htmlFor="">Order</label>
+          <pre className="json">
+            {JSON.stringify(this.state.order, null, 4)}
+          </pre>
         </header>
       </div>
     );
