@@ -146,27 +146,43 @@ class App extends Component {
   }
   render() {
     return (
-      <div className="App">
-        <header className="App-header">
-          <label>Maker</label>
-          <input
-            type="text"
-            id="maker"
-            className="input"
-            value={this.state.maker}
-            placeholder="No yet"
-          />
-          <label>taker</label>
-          <input
-            type="text"
-            id="maker"
-            className="input"
-            value={this.state.taker}
-            placeholder="No yet"
-          />
-          <button onClick={this.try}>Click</button>
-          <input type="text" className="input" value={this.state.tx} />
-          <label htmlFor="">Order</label>
+      <div className="container">
+        <h2>Zero-X</h2>
+        <p>Run ganache node</p>
+        <header>
+          <div className="input-field">
+            <label>Maker</label>
+            <input
+              type="text"
+              id="maker"
+              className="input"
+              value={this.state.maker}
+              placeholder="No yet"
+            />
+          </div>
+          <div className="input-field">
+            <label>taker</label>
+            <input
+              type="text"
+              id="maker"
+              className="input"
+              value={this.state.taker}
+              placeholder="No yet"
+            />
+          </div>
+          <button onClick={this.try} className="waves-effect waves-light btn">
+            Create Order
+          </button>
+          <div className="input-field">
+            <input
+              type="text"
+              className="input"
+              readonly="readonly"
+              value={this.state.tx}
+            />
+            <label>Hash</label>
+          </div>
+          Order:
           <pre className="json">
             {JSON.stringify(this.state.order, null, 4)}
           </pre>
