@@ -21,128 +21,164 @@ import { getRandomFutureDateInSeconds } from "./files/utils";
 import { NETWORK_CONFIGS, TX_DEFAULTS } from "./files/configs";
 
 class App extends Component {
+  providerEngine: Any;
+  contractWrappers: Any;
+  web3Wrapper: Any;
+  AvailableAddresses: [];
+
   constructor(props) {
     super(props);
     this.state = {
       tx: "",
       maker: "",
-      taker: "",
-      order: {}
+      taker: NULL_ADDRESS,
+      makerBalance: Number,
+      order: {},
+      randomExpiration: Number,
+      takerAssetAmount: Number,
+      makerAssetAmount: Number
     };
+    this.changeMakerAmount = this.changeMakerAmount.bind(this);
+    this.changeTakerAmount = this.changeTakerAmount.bind(this);
     this.try = this.try.bind(this);
   }
-  componentDidMount() {
+  async componentDidMount() {
     console.log("hola mundo");
-  }
-  async try() {
-    console.log("NETWORK_CONFIGS", NETWORK_CONFIGS);
-    const providerEngine = new Web3ProviderEngine();
-    providerEngine.addProvider(new RPCSubprovider(NETWORK_CONFIGS.rpcUrl));
-    providerEngine.start();
+    this.providerEngine = new Web3ProviderEngine();
+    this.providerEngine.addProvider(new RPCSubprovider(NETWORK_CONFIGS.rpcUrl));
+    this.providerEngine.start();
 
-    // Instantiate ContractWrappers with the provider
-    const contractWrappers = new ContractWrappers(providerEngine, {
+    this.contractWrappers = new ContractWrappers(this.providerEngine, {
       networkId: NETWORK_CONFIGS.networkId
     });
-    console.log("contractWrappers", contractWrappers);
-    const web3Wrapper = new Web3Wrapper(providerEngine);
-    console.log("web3Wrapper", web3Wrapper);
-    const [maker, taker] = await web3Wrapper.getAvailableAddressesAsync();
+
+    this.web3Wrapper = new Web3Wrapper(this.providerEngine);
+
+    this.AvailableAddresses = await this.web3Wrapper.getAvailableAddressesAsync();
     this.setState({
-      maker: maker,
-      taker: taker
+      maker: this.AvailableAddresses[0]
     });
-    // Token Addresses
-    console.log("maker", maker, "taker", taker);
-    const zrxTokenAddress = contractWrappers.exchange.getZRXTokenAddress();
-    const etherTokenAddress = contractWrappers.etherToken.getContractAddressIfExists();
-    const DECIMALS = 18;
-    const makerAssetData = assetDataUtils.encodeERC20AssetData(zrxTokenAddress);
-    const takerAssetData = assetDataUtils.encodeERC20AssetData(
-      etherTokenAddress
+    const balance = await this.web3Wrapper.getBalanceInWeiAsync(
+      this.state.maker
     );
+    this.setState({
+      makerBalance: balance.toNumber() / 1e18
+    });
+    this.setState({
+      randomExpiration: getRandomFutureDateInSeconds()
+    });
     // the amount the maker is selling of maker asset
     const makerAssetAmount = Web3Wrapper.toBaseUnitAmount(
       new BigNumber(5),
       DECIMALS
     );
+
     // the amount the maker wants of taker asset
     const takerAssetAmount = Web3Wrapper.toBaseUnitAmount(
       new BigNumber(0.1),
       DECIMALS
     );
+    this.setState({
+      makerAssetAmount: makerAssetAmount,
+      takerAssetAmount: takerAssetAmount
+    });
+  }
+
+  async try() {
+    const [maker, taker] = await this.web3Wrapper.getAvailableAddressesAsync();
+    const zrxTokenAddress = this.contractWrappers.exchange.getZRXTokenAddress();
+    const etherTokenAddress = this.contractWrappers.etherToken.getContractAddressIfExists();
+    const DECIMALS = 18;
+    const makerAssetData = assetDataUtils.encodeERC20AssetData(zrxTokenAddress);
+    const takerAssetData = assetDataUtils.encodeERC20AssetData(
+      etherTokenAddress
+    );
+
     // Allow the 0x ERC20 Proxy to move ZRX on behalf of makerAccount
-    const makerZRXApprovalTxHash = await contractWrappers.erc20Token.setUnlimitedProxyAllowanceAsync(
+    const makerZRXApprovalTxHash = await this.contractWrappers.erc20Token.setUnlimitedProxyAllowanceAsync(
       zrxTokenAddress,
       maker
     );
-    await web3Wrapper.awaitTransactionSuccessAsync(makerZRXApprovalTxHash);
+    await this.web3Wrapper.awaitTransactionSuccessAsync(makerZRXApprovalTxHash);
 
     // Allow the 0x ERC20 Proxy to move WETH on behalf of takerAccount
-    const takerWETHApprovalTxHash = await contractWrappers.erc20Token.setUnlimitedProxyAllowanceAsync(
+    const takerWETHApprovalTxHash = await this.contractWrappers.erc20Token.setUnlimitedProxyAllowanceAsync(
       etherTokenAddress,
       taker
     );
-    await web3Wrapper.awaitTransactionSuccessAsync(takerWETHApprovalTxHash);
+    await this.web3Wrapper.awaitTransactionSuccessAsync(
+      takerWETHApprovalTxHash
+    );
 
     // Convert ETH into WETH for taker by depositing ETH into the WETH contract
-    const takerWETHDepositTxHash = await contractWrappers.etherToken.depositAsync(
+    const takerWETHDepositTxHash = await this.contractWrappers.etherToken.depositAsync(
       etherTokenAddress,
-      takerAssetAmount,
+      this.state.takerAssetAmount,
       taker
     );
-    await web3Wrapper.awaitTransactionSuccessAsync(takerWETHDepositTxHash);
+    await this.web3Wrapper.awaitTransactionSuccessAsync(takerWETHDepositTxHash);
     // Set up the Order and fill it
-    const randomExpiration = getRandomFutureDateInSeconds();
-    const exchangeAddress = contractWrappers.exchange.getContractAddress();
+
+    const exchangeAddress = this.contractWrappers.exchange.getContractAddress();
     console.log("exchangeAddress", exchangeAddress);
     // Create the order
     const order: Order = {
       exchangeAddress,
-      makerAddress: maker,
+      makerAddress: this.state.maker,
       takerAddress: NULL_ADDRESS,
       senderAddress: NULL_ADDRESS,
       feeRecipientAddress: NULL_ADDRESS,
-      expirationTimeSeconds: randomExpiration,
+      expirationTimeSeconds: this.state.randomExpiration,
       salt: generatePseudoRandomSalt(),
-      makerAssetAmount,
-      takerAssetAmount,
+      makerAssetAmount: this.state.makerAssetAmount,
+      takerAssetAmount: this.state.takerAssetAmount,
       makerAssetData,
       takerAssetData,
       makerFee: ZERO,
       takerFee: ZERO
     };
 
-    console.log("order", order);
     this.setState({
       order: order
     });
     // Generate the order hash and sign it
     const orderHashHex = orderHashUtils.getOrderHashHex(order);
     const signature = await signatureUtils.ecSignOrderHashAsync(
-      providerEngine,
+      this.providerEngine,
       orderHashHex,
       maker,
       SignerType.Default
     );
     const signedOrder = { ...order, signature };
-    console.log("signedOrder", signedOrder);
-    await contractWrappers.exchange.validateFillOrderThrowIfInvalidAsync(
+    const validation = await this.contractWrappers.exchange.validateFillOrderThrowIfInvalidAsync(
       signedOrder,
-      takerAssetAmount,
+      this.state.takerAssetAmount,
       taker
     );
-    const txHash = await contractWrappers.exchange.fillOrderAsync(
+
+    const txHash = await this.contractWrappers.exchange.fillOrderAsync(
       signedOrder,
-      takerAssetAmount,
+      this.state.takerAssetAmount,
       taker,
       {
         gasLimit: TX_DEFAULTS.gas
       }
     );
 
-    const txSuccess = await web3Wrapper.awaitTransactionSuccessAsync(txHash);
+    const txSuccess = await this.web3Wrapper.awaitTransactionSuccessAsync(
+      txHash
+    );
     this.setState({ tx: txHash });
+  }
+  changeMakerAmount(e) {
+    this.setState({
+      makerAssetAmount: e.target.value
+    });
+  }
+  changeTakerAmount(e) {
+    this.setState({
+      takerAssetAmount: e.target.value
+    });
   }
   render() {
     return (
@@ -150,23 +186,60 @@ class App extends Component {
         <h2>Zero-X</h2>
         <p>Run ganache node</p>
         <header>
+          <div>
+            <label>Maker balance: </label>
+            <br />
+            {this.state.makerBalance}
+          </div>
           <div className="input-field">
-            <label>Maker</label>
+            <label>Maker address</label>
             <input
               type="text"
               id="maker"
               className="input"
-              value={this.state.maker}
+              defaultValue={this.state.maker}
               placeholder="No yet"
             />
           </div>
           <div className="input-field">
-            <label>taker</label>
+            <label>taker address</label>
             <input
               type="text"
               id="maker"
               className="input"
-              value={this.state.taker}
+              defaultValue={this.state.taker}
+              placeholder="No yet"
+            />
+          </div>
+          <div className="input-field">
+            <label>Expiration</label>
+            <input
+              type="text"
+              id="randomExpiration"
+              className="input"
+              defaultValue={this.state.randomExpiration}
+              placeholder="No yet"
+            />
+          </div>
+          <div className="input-field">
+            <label>makerAssetAmount</label>
+            <input
+              type="text"
+              id="makerAssetAmount"
+              className="input"
+              onChange={this.changeMakerAmount}
+              defaultValue={this.state.makerAssetAmount}
+              placeholder="No yet"
+            />
+          </div>
+          <div className="input-field">
+            <label>takerAssetAmount</label>
+            <input
+              type="text"
+              id="takerAssetAmount"
+              className="input"
+              onChange={this.changeTakerAmount}
+              defaultValue={this.state.takerAssetAmount}
               placeholder="No yet"
             />
           </div>
@@ -174,12 +247,7 @@ class App extends Component {
             Create Order
           </button>
           <div className="input-field">
-            <input
-              type="text"
-              className="input"
-              readonly="readonly"
-              value={this.state.tx}
-            />
+            <input type="text" className="input" defaultValue={this.state.tx} />
             <label>Hash</label>
           </div>
           Order:
