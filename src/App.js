@@ -78,10 +78,10 @@ class App extends Component {
       new BigNumber(0.1),
       DECIMALS
     );
-    this.setState({
-      makerAssetAmount: makerAssetAmount,
-      takerAssetAmount: takerAssetAmount
-    });
+    // this.setState({
+    //   makerAssetAmount: makerAssetAmount,
+    //   takerAssetAmount: takerAssetAmount
+    // });
   }
 
   async try() {
@@ -171,13 +171,24 @@ class App extends Component {
     this.setState({ tx: txHash });
   }
   changeMakerAmount(e) {
+    this.state.makerAssetAmount = Web3Wrapper.toBaseUnitAmount(
+      new BigNumber(e.target.value),
+      DECIMALS
+    );
     this.setState({
-      makerAssetAmount: e.target.value
+      makerAssetAmount: this.state.makerAssetAmount
     });
   }
+
+  // the amount the maker wants of taker asset
+
   changeTakerAmount(e) {
+    this.state.takerAssetAmount = Web3Wrapper.toBaseUnitAmount(
+      new BigNumber(e.target.value),
+      DECIMALS
+    );
     this.setState({
-      takerAssetAmount: e.target.value
+      takerAssetAmount: this.state.takerAssetAmount
     });
   }
   render() {
