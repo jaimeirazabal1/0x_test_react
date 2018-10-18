@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import logo from "./logo.svg";
 import "./App.css";
-
+import OrderRow from "./Order";
 //zero x librearies
 
 import {
@@ -25,6 +25,7 @@ class App extends Component {
   contractWrappers: Any;
   web3Wrapper: Any;
   AvailableAddresses: [];
+  _orders: [];
 
   constructor(props) {
     super(props);
@@ -36,14 +37,16 @@ class App extends Component {
       order: {},
       randomExpiration: Number,
       takerAssetAmount: Number,
-      makerAssetAmount: Number
+      makerAssetAmount: Number,
+      OrderHistory: []
     };
     this.changeMakerAmount = this.changeMakerAmount.bind(this);
     this.changeTakerAmount = this.changeTakerAmount.bind(this);
+    this.showOrders = this.showOrders.bind(this);
     this.try = this.try.bind(this);
+    this._orders = [];
   }
   async componentDidMount() {
-    console.log("hola mundo");
     this.providerEngine = new Web3ProviderEngine();
     this.providerEngine.addProvider(new RPCSubprovider(NETWORK_CONFIGS.rpcUrl));
     this.providerEngine.start();
@@ -150,6 +153,8 @@ class App extends Component {
       SignerType.Default
     );
     const signedOrder = { ...order, signature };
+    this._orders.push(signedOrder);
+    console.log("this.OrderHistory", this._orders);
     const validation = await this.contractWrappers.exchange.validateFillOrderThrowIfInvalidAsync(
       signedOrder,
       this.state.takerAssetAmount,
@@ -181,7 +186,9 @@ class App extends Component {
   }
 
   // the amount the maker wants of taker asset
-
+  showOrders() {
+    console.log(this._orders);
+  }
   changeTakerAmount(e) {
     this.state.takerAssetAmount = Web3Wrapper.toBaseUnitAmount(
       new BigNumber(e.target.value),
@@ -194,78 +201,109 @@ class App extends Component {
   render() {
     return (
       <div className="container">
-        <h2>Zero-X</h2>
-        <p>Run ganache node</p>
-        <header>
-          <div>
-            <label>Maker balance: </label>
-            <br />
-            {this.state.makerBalance}
+        <div class="row">
+          <div className="col s4">
+            <h2>Zero-X</h2>
+            <p>Run ganache node</p>
+            <header>
+              <div>
+                <label>Maker balance: </label>
+                <br />
+                {this.state.makerBalance}
+              </div>
+              <div className="input-field">
+                <label>Maker address</label>
+                <input
+                  type="text"
+                  id="maker"
+                  className="input"
+                  defaultValue={this.state.maker}
+                  placeholder="No yet"
+                />
+              </div>
+              <div className="input-field">
+                <label>taker address</label>
+                <input
+                  type="text"
+                  id="maker"
+                  className="input"
+                  defaultValue={this.state.taker}
+                  placeholder="No yet"
+                />
+              </div>
+              <div className="input-field">
+                <label>Expiration</label>
+                <input
+                  type="text"
+                  id="randomExpiration"
+                  className="input"
+                  defaultValue={this.state.randomExpiration}
+                  placeholder="No yet"
+                />
+              </div>
+              <div className="input-field">
+                <label>makerAssetAmount</label>
+                <input
+                  type="text"
+                  id="makerAssetAmount"
+                  className="input"
+                  onChange={this.changeMakerAmount}
+                  defaultValue={this.state.makerAssetAmount}
+                  placeholder="No yet"
+                />
+              </div>
+              <div className="input-field">
+                <label>takerAssetAmount</label>
+                <input
+                  type="text"
+                  id="takerAssetAmount"
+                  className="input"
+                  onChange={this.changeTakerAmount}
+                  defaultValue={this.state.takerAssetAmount}
+                  placeholder="No yet"
+                />
+              </div>
+              <button
+                onClick={this.try}
+                className="waves-effect waves-light btn "
+              >
+                Create Order
+              </button>
+              &nbsp;
+              <button
+                onClick={this.showOrders}
+                className="waves-effect waves-light btn"
+              >
+                Show Orders
+              </button>
+              <div className="input-field">
+                <input
+                  type="text"
+                  className="input"
+                  defaultValue={this.state.tx}
+                />
+                <label>Hash</label>
+              </div>
+              Order:
+              <pre className="json">
+                {JSON.stringify(this.state.order, null, 4)}
+              </pre>
+            </header>
           </div>
-          <div className="input-field">
-            <label>Maker address</label>
-            <input
-              type="text"
-              id="maker"
-              className="input"
-              defaultValue={this.state.maker}
-              placeholder="No yet"
-            />
+          <div className="col s8">
+            <h2>Orders</h2>
+            <table className="responsive-table">
+              <thead>
+                <th>MakerAssetAmount</th>
+                <th>takerAssetAmount</th>
+                <th>Expiration</th>
+              </thead>
+              <tbody>
+                <OrderRow orders={this._orders} />
+              </tbody>
+            </table>
           </div>
-          <div className="input-field">
-            <label>taker address</label>
-            <input
-              type="text"
-              id="maker"
-              className="input"
-              defaultValue={this.state.taker}
-              placeholder="No yet"
-            />
-          </div>
-          <div className="input-field">
-            <label>Expiration</label>
-            <input
-              type="text"
-              id="randomExpiration"
-              className="input"
-              defaultValue={this.state.randomExpiration}
-              placeholder="No yet"
-            />
-          </div>
-          <div className="input-field">
-            <label>makerAssetAmount</label>
-            <input
-              type="text"
-              id="makerAssetAmount"
-              className="input"
-              onChange={this.changeMakerAmount}
-              defaultValue={this.state.makerAssetAmount}
-              placeholder="No yet"
-            />
-          </div>
-          <div className="input-field">
-            <label>takerAssetAmount</label>
-            <input
-              type="text"
-              id="takerAssetAmount"
-              className="input"
-              onChange={this.changeTakerAmount}
-              defaultValue={this.state.takerAssetAmount}
-              placeholder="No yet"
-            />
-          </div>
-          <button onClick={this.try} className="waves-effect waves-light btn">
-            Create Order
-          </button>
-          <div className="input-field">
-            <input type="text" className="input" defaultValue={this.state.tx} />
-            <label>Hash</label>
-          </div>
-          Order:
-          <pre className="json">
-            {JSON.stringify(this.state.order, null, 4)}
-          </pre>
-        </header>
+        </div>
       </div>
     );
   }
